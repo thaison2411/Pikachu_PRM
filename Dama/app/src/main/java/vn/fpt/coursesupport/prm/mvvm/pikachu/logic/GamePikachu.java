@@ -19,6 +19,7 @@ public class GamePikachu {
 		this.observerList = new ArrayList<>();
 		initBoardDimensions(level);
 		initGame();
+
 	}
 
 	private void initBoardDimensions(int level) {

@@ -1,6 +1,8 @@
 package vn.fpt.coursesupport.prm.mvvm.pikachu.viewmodel;
 
 import android.os.Handler;
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.databinding.ObservableField;
 import androidx.lifecycle.ViewModel;
@@ -16,7 +18,7 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
     private GamePikachu gamePikachu;
     private int rows, cols;
     private int[] pikachuImageResources; // Mảng chứa ID tài nguyên của 10+1 hình Pikachu
-
+    public final ObservableField<Integer> level = new ObservableField<>(1);
     // Mảng 2 chiều các ObservableField để cập nhật giao diện
     public ObservableField<Integer>[][] cellImages;
     // Mảng 2 chiều để theo dõi trạng thái chọn của ô (dùng để đổi background)
@@ -34,9 +36,13 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
     // Khởi tạo
     public PikachuViewModel(int level, int[] imageResources) {
         this.pikachuImageResources = imageResources;
+        this.level.set(level);
+
         // Bắt đầu với mức 1 (hoặc mức được chọn)
         initGame(level);
     }
+
+    private static final int MAX_SIZE = 10;
 
     public void initGame(int level) {
         gamePikachu = new GamePikachu(level);
@@ -44,33 +50,49 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         rows = gamePikachu.getRows();
         cols = gamePikachu.getCols();
 
-        // Khởi tạo mảng cellImages và selectedCells
-        cellImages = new ObservableField[rows][cols];
-        selectedCells = new ObservableField[rows][cols];
-
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                // Kiểm tra kích thước mảng trước khi gán
-                if (r < rows && c < cols) {
-                    cellImages[r][c] = new ObservableField<>(getImageResource(r, c));
+        // Luôn tạo mảng 10x10 để không crash
+        if (cellImages == null) {
+            cellImages = new ObservableField[MAX_SIZE][MAX_SIZE];
+            selectedCells = new ObservableField[MAX_SIZE][MAX_SIZE];
+            for (int r = 0; r < MAX_SIZE; r++) {
+                for (int c = 0; c < MAX_SIZE; c++) {
+                    cellImages[r][c] = new ObservableField<>(R.drawable.empty_tile);
                     selectedCells[r][c] = new ObservableField<>(TILE_NORMAL_BG);
                 }
             }
         }
+
+        // Chỉ cập nhật những ô hợp lệ trong màn hiện tại
+        for (int r = 0; r < MAX_SIZE; r++) {
+            for (int c = 0; c < MAX_SIZE; c++) {
+                if (r < rows && c < cols) {
+                    cellImages[r][c].set(getImageResource(r, c));
+                } else {
+                    cellImages[r][c].set(R.drawable.empty_tile); // ẩn ô ngoài
+                }
+                selectedCells[r][c].set(TILE_NORMAL_BG);
+            }
+        }
+
         gameStateMessage.set("Bắt đầu màn " + level);
     }
+
+
+
+
 
     // Phương thức lấy ID tài nguyên hình ảnh dựa trên Tile ID
     private int getImageResource(int row, int col) {
         Tile tile = gamePikachu.getTile(row, col);
-        if (tile == null || tile.isMatched()) {
-            // Index 0 là hình nền trống/đã khớp
-            return pikachuImageResources[0];
-        } else {
-            // imageId trong Tile từ 1-10 -> Index 1-10 trong mảng resources
-            return pikachuImageResources[tile.getImageId()];
+        if (tile == null || tile.isMatched()) return pikachuImageResources[0];
+
+        int id = tile.getImageId();
+        if (id <= 0 || id >= pikachuImageResources.length) {
+            id = 1; // fallback an toàn
         }
+        return pikachuImageResources[id];
     }
+
 
     // Xử lý khi người dùng click vào ô
     public void onClickedOn(int row, int col) {
@@ -114,7 +136,7 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         // Áp dụng hiệu ứng hủy chọn
         updateSelectedCell(tile, false);
 
-        // CẬP NHẬT QUAN TRỌNG: Model đã reset selectedTile1. ViewModel cũng cần reset.
+        //  Model đã reset selectedTile1. ViewModel cũng cần reset.
         selectedTile1 = null;
         selectedTile2 = null;
         gameStateMessage.set("Đã hủy chọn ô.");
@@ -122,7 +144,7 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
 
     @Override
     public void updateMatchFound(Tile tile1, Tile tile2) {
-        // CẬP NHẬT QUAN TRỌNG: Bỏ hiệu ứng chọn trước khi ẩn
+        //  Bỏ hiệu ứng chọn trước khi ẩn
         updateSelectedCell(tile1, false);
         updateSelectedCell(tile2, false);
 
@@ -158,6 +180,29 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
     @Override
     public void updateGameWin(int level) {
         gameStateMessage.set("Chiến thắng! Màn " + level + " hoàn thành!");
+        Log.d("PikachuVM", "updateNoMatch called");
+        handler.postDelayed(() -> {
+            int nextLevel = level + 1;
+            Log.d("PikachuVM", "Handler called");
+            if (nextLevel > 3) {
+                gameStateMessage.set("Bạn đã hoàn thành tất cả các màn!");
+                return;
+            }
+
+            // Reset trạng thái chọn
+            selectedTile1 = null;
+            selectedTile2 = null;
+
+            // Cập nhật level và tạo game mới
+            this.level.set(nextLevel);
+            initGame(nextLevel);
+
+            // Cập nhật thông báo sau khi grid đã khởi tạo xong
+            gameStateMessage.set("Bắt đầu màn " + nextLevel + "!");
+
+        }, 1500);
+
+
     }
 
     // =========================================================
