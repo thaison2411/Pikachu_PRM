@@ -7,7 +7,7 @@ import java.util.Random;
 
 public class GamePikachu {
 	private int rows, cols;
-	private int level; // 1: Dễ, 2: Trung bình, 3: Khó
+	private int level;
 	private List<Tile> allTiles;
 	private Tile selectedTile1 = null;
 	private Tile selectedTile2 = null;

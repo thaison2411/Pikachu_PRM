@@ -12,16 +12,14 @@ import vn.fpt.coursesupport.prm.mvvm.pikachu.R;
 import vn.fpt.coursesupport.prm.mvvm.pikachu.logic.GamePikachu;
 import vn.fpt.coursesupport.prm.mvvm.pikachu.logic.IGamePikachuObserver;
 import vn.fpt.coursesupport.prm.mvvm.pikachu.logic.Tile;
-
-// ĐÃ SỬA: Xóa từ khóa 'abstract'
 public class PikachuViewModel extends ViewModel implements IGamePikachuObserver {
     private GamePikachu gamePikachu;
     private int rows, cols;
-    private int[] pikachuImageResources; // Mảng chứa ID tài nguyên của 10+1 hình Pikachu
+    private int[] pikachuImageResources;
     public final ObservableField<Integer> level = new ObservableField<>(1);
-    // Mảng 2 chiều các ObservableField để cập nhật giao diện
+
     public ObservableField<Integer>[][] cellImages;
-    // Mảng 2 chiều để theo dõi trạng thái chọn của ô (dùng để đổi background)
+
     public ObservableField<Integer>[][] selectedCells;
     public final ObservableField<String> gameStateMessage = new ObservableField<>("Chọn Mức Độ!");
 
@@ -29,16 +27,13 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
     private Tile selectedTile1 = null;
     private Tile selectedTile2 = null;
 
-    // Khai báo tài nguyên background
     private final int TILE_NORMAL_BG = R.drawable.tile_background;
     private final int TILE_SELECTED_BG = R.drawable.tile_selected;
 
-    // Khởi tạo
     public PikachuViewModel(int level, int[] imageResources) {
         this.pikachuImageResources = imageResources;
         this.level.set(level);
 
-        // Bắt đầu với mức 1 (hoặc mức được chọn)
         initGame(level);
     }
 
@@ -50,7 +45,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         rows = gamePikachu.getRows();
         cols = gamePikachu.getCols();
 
-        // Luôn tạo mảng 10x10 để không crash
         if (cellImages == null) {
             cellImages = new ObservableField[MAX_SIZE][MAX_SIZE];
             selectedCells = new ObservableField[MAX_SIZE][MAX_SIZE];
@@ -62,7 +56,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
             }
         }
 
-        // Chỉ cập nhật những ô hợp lệ trong màn hiện tại
         for (int r = 0; r < MAX_SIZE; r++) {
             for (int c = 0; c < MAX_SIZE; c++) {
                 if (r < rows && c < cols) {
@@ -77,11 +70,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         gameStateMessage.set("Bắt đầu màn " + level);
     }
 
-
-
-
-
-    // Phương thức lấy ID tài nguyên hình ảnh dựa trên Tile ID
     private int getImageResource(int row, int col) {
         Tile tile = gamePikachu.getTile(row, col);
         if (tile == null || tile.isMatched()) return pikachuImageResources[0];
@@ -93,23 +81,17 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         return pikachuImageResources[id];
     }
 
-
-    // Xử lý khi người dùng click vào ô
     public void onClickedOn(int row, int col) {
-        // Bỏ qua click nếu đang chờ xử lý 2 ô
         if (selectedTile1 != null && selectedTile2 != null) return;
 
         gamePikachu.onClickTile(row, col);
     }
 
-    // Cập nhật hình ảnh của một ô (ẩn/hiện)
     private void updateCell(Tile tile) {
         if (tile != null) {
             cellImages[tile.getRow()][tile.getCol()].set(getImageResource(tile.getRow(), tile.getCol()));
         }
     }
-
-    // Cập nhật background của một ô (hiệu ứng chọn)
     private void updateSelectedCell(Tile tile, boolean isSelected) {
         if (tile != null) {
             int row = tile.getRow();
@@ -118,8 +100,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         }
     }
 
-    // --- IGamePikachuObserver Implementation ---
-
     @Override
     public void updateTileSelected(Tile tile) {
         if (selectedTile1 == null) {
@@ -127,7 +107,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         } else {
             selectedTile2 = tile;
         }
-        // Áp dụng hiệu ứng chọn
         updateSelectedCell(tile, true);
     }
 
@@ -144,16 +123,13 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
 
     @Override
     public void updateMatchFound(Tile tile1, Tile tile2) {
-        //  Bỏ hiệu ứng chọn trước khi ẩn
         updateSelectedCell(tile1, false);
         updateSelectedCell(tile2, false);
 
-        // Gọi resetSelections() trong Model để cho phép click tiếp
         gamePikachu.resetSelections();
         selectedTile1 = null;
         selectedTile2 = null;
 
-        // Cập nhật giao diện để ẩn 2 ô (hiển thị hình nền trống)
         updateCell(tile1);
         updateCell(tile2);
         gameStateMessage.set("Tuyệt vời! Đã tìm thấy cặp.");
@@ -163,13 +139,10 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
     public void updateNoMatch(Tile tile1, Tile tile2) {
         gameStateMessage.set("Sai rồi! Đợi một chút...");
 
-        // Hủy chọn (Unselect) 2 ô trong View sau delay
         handler.postDelayed(() -> {
-            // Hủy hiệu ứng chọn trên UI
             updateSelectedCell(tile1, false);
             updateSelectedCell(tile2, false);
 
-            // Reset logic
             gamePikachu.resetSelections();
             selectedTile1 = null;
             selectedTile2 = null;
@@ -189,15 +162,12 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
                 return;
             }
 
-            // Reset trạng thái chọn
             selectedTile1 = null;
             selectedTile2 = null;
 
-            // Cập nhật level và tạo game mới
             this.level.set(nextLevel);
             initGame(nextLevel);
 
-            // Cập nhật thông báo sau khi grid đã khởi tạo xong
             gameStateMessage.set("Bắt đầu màn " + nextLevel + "!");
 
         }, 1500);
@@ -205,9 +175,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
 
     }
 
-    // =========================================================
-    // FACTORY CLASS ĐỂ TRUYỀN THAM SỐ VÀO CONSTRUCTOR
-    // =========================================================
     public static class Factory implements ViewModelProvider.Factory {
         private final int level;
         private final int[] imageResources;
@@ -221,7 +188,6 @@ public class PikachuViewModel extends ViewModel implements IGamePikachuObserver 
         @Override
         public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
             if (modelClass.isAssignableFrom(PikachuViewModel.class)) {
-                // Khởi tạo ViewModel với các tham số đã truyền vào Factory
                 return (T) new PikachuViewModel(level, imageResources);
             }
             throw new IllegalArgumentException("Unknown ViewModel class");
